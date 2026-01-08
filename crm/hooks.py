@@ -1,4 +1,4 @@
-app_name = "crm"
+app_name = "crm_dinematters"
 app_title = "Frappe CRM"
 app_publisher = "Frappe Technologies Pvt. Ltd."
 app_description = "Kick-ass Open Source CRM"
