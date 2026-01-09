@@ -13,9 +13,7 @@ def before_install():
 
 
 def after_install(force=False):
-	# Skip add_default_lead_statuses during installation - it will be handled in after_migrate
-	# During installation, the DocType controller might not be available yet
-	# due to app name resolution issues (crm_dinematters vs crm)
+	add_default_lead_statuses()
 	add_default_deal_statuses()
 	add_default_communication_statuses()
 	add_default_fields_layout(force)
@@ -33,6 +31,7 @@ def after_install(force=False):
 
 
 def add_default_lead_statuses():
+	"""Add default lead statuses. Uses SQL inserts to avoid controller loading issues."""
 	statuses = {
 		"New": {
 			"color": "gray",
@@ -60,22 +59,45 @@ def add_default_lead_statuses():
 		},
 	}
 
-	for status in statuses:
+	# Check if DocType exists
+	if not frappe.db.exists("DocType", "CRM Lead Status"):
+		return
+
+	for status, config in statuses.items():
 		if frappe.db.exists("CRM Lead Status", status):
 			continue
 
 		try:
+			# Try using DocType first (works after installation)
 			doc = frappe.new_doc("CRM Lead Status")
 			doc.lead_status = status
-			doc.color = statuses[status]["color"]
-			doc.position = statuses[status]["position"]
+			doc.color = config["color"]
+			doc.position = config["position"]
 			doc.insert()
-		except Exception as e:
-			# Log error but don't fail
-			frappe.log_error(
-				title="Error creating CRM Lead Status",
-				message=f"Failed to create lead status '{status}': {str(e)}"
-			)
+		except Exception:
+			# If DocType controller not available, use direct SQL insert
+			# This can happen during migration when controller isn't loaded yet
+			try:
+				frappe.db.sql("""
+					INSERT INTO `tabCRM Lead Status` 
+					(name, lead_status, color, position, creation, modified, owner, modified_by)
+					VALUES (%s, %s, %s, %s, NOW(), NOW(), %s, %s)
+				""", (
+					status,
+					status,
+					config["color"],
+					config["position"],
+					frappe.session.user,
+					frappe.session.user
+				))
+				frappe.db.commit()
+			except Exception as e:
+				# Log error but continue
+				frappe.log_error(
+					title="Error creating CRM Lead Status",
+					message=f"Failed to create lead status '{status}': {str(e)}"
+				)
+				frappe.db.rollback()
 
 
 def add_default_deal_statuses():
