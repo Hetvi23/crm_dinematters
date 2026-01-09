@@ -237,7 +237,7 @@
       <div class="flex gap-2 items-center justify-between w-full" @click.stop.prevent>
         <Dropdown :options="getMoveToOptions(itemName, currentColumn)" placement="top-start">
           <template #default>
-            <Button 
+        <Button
               variant="ghost" 
               size="sm"
               :label="__('Move to')"
@@ -245,17 +245,17 @@
               @click.stop.prevent
               style="font-size: 13px; padding: 4px 8px; color: #1877F2; font-weight: 500;"
               class="hover:bg-[#E7F3FF]"
-            />
+        />
           </template>
         </Dropdown>
         <div class="flex gap-2">
-          <Button
-            variant="solid"
+        <Button
+          variant="solid"
             size="sm"
-            :label="__('Reminder')"
+          :label="__('Reminder')"
             @click.stop.prevent="openReminderModal(itemName)"
             style="font-size: 13px; padding: 4px 12px; background-color: #1877F2;"
-          />
+        />
         </div>
       </div>
     </template>

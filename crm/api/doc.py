@@ -298,28 +298,52 @@ def get_data(
 	columns = frappe.parse_json(columns or "[]")
 	
 	# Handle kanban_fields - clean and parse safely
+	original_kanban_fields = kanban_fields
 	if kanban_fields:
-		# Clean the string - remove any extra whitespace or characters
+		# Convert to string and clean
 		kanban_fields = str(kanban_fields).strip()
+		
 		# If it looks like JSON, try to extract just the JSON part
 		if kanban_fields.startswith('['):
 			# Find the end of the JSON array by counting brackets
+			# We need to handle strings inside the JSON properly
 			bracket_count = 0
 			json_end = 0
+			in_string = False
+			escape_next = False
+			
 			for i, char in enumerate(kanban_fields):
-				if char == '[':
-					bracket_count += 1
-				elif char == ']':
-					bracket_count -= 1
-					if bracket_count == 0:
-						json_end = i + 1
-						break
+				if escape_next:
+					escape_next = False
+					continue
+				
+				if char == '\\':
+					escape_next = True
+					continue
+				
+				if char == '"' and not escape_next:
+					in_string = not in_string
+					continue
+				
+				if not in_string:
+					if char == '[':
+						bracket_count += 1
+					elif char == ']':
+						bracket_count -= 1
+						if bracket_count == 0:
+							json_end = i + 1
+							break
+			
 			# Extract only the JSON part (up to the closing bracket)
 			if json_end > 0:
 				kanban_fields = kanban_fields[:json_end]
 			else:
-				# If we can't find the end, default to empty array
-				kanban_fields = "[]"
+				# If we can't find the end, try to parse what we have
+				# and if it fails, default to empty array
+				try:
+					json.loads(kanban_fields)
+				except:
+					kanban_fields = "[]"
 		else:
 			# Not JSON format, try to parse as comma-separated or default to empty
 			try:
@@ -328,13 +352,19 @@ def get_data(
 				kanban_fields = json.dumps(fields_list)
 			except:
 				kanban_fields = "[]"
+	else:
+		kanban_fields = "[]"
 	
 	# Parse kanban_fields with error handling
 	try:
-		kanban_fields = frappe.parse_json(kanban_fields or "[]")
+		kanban_fields = frappe.parse_json(kanban_fields)
+		# Ensure it's a list
+		if not isinstance(kanban_fields, list):
+			kanban_fields = []
 	except Exception as e:
+		# Log the error with full details
 		frappe.log_error(
-			message=f"Error parsing kanban_fields: {str(e)}\nValue received: {repr(kanban_fields)}",
+			message=f"Error parsing kanban_fields: {str(e)}\nOriginal value: {repr(original_kanban_fields)}\nCleaned value: {repr(kanban_fields)}\nType: {type(original_kanban_fields)}",
 			title="Kanban Fields Parse Error"
 		)
 		# Default to empty array if parsing fails

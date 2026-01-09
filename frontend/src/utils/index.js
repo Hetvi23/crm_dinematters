@@ -428,7 +428,7 @@ export function parseColorBg(color) {
     'pink': 'bg-pink-100',
     'orange': 'bg-orange-100',
   }
-  
+
   return bgColorMap[color] || `bg-${color}-100`
 }
 
