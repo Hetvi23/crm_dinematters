@@ -17,7 +17,7 @@ scheduler_events = {
 	# Empty - background sync is handled by crm_essenceerp's scheduler
 }
 
-# Override after_migrate - remove it since it references 'crm' app which isn't installed
-# The function syncs FCRM Settings dropdown items, which is optional.
-# If needed, it can be run manually via the FCRM Settings doctype.
-after_migrate = []
+# Override after_migrate to handle app name properly
+# We need to call both the original after_migrate (for dropdown items) and add_default_lead_statuses
+# Use a string path to a function in this app's module
+after_migrate = ["crm_dinematters.after_migrate.after_migrate"]

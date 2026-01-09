@@ -13,7 +13,9 @@ def before_install():
 
 
 def after_install(force=False):
-	add_default_lead_statuses()
+	# Skip add_default_lead_statuses during installation - it will be handled in after_migrate
+	# During installation, the DocType controller might not be available yet
+	# due to app name resolution issues (crm_dinematters vs crm)
 	add_default_deal_statuses()
 	add_default_communication_statuses()
 	add_default_fields_layout(force)
@@ -62,11 +64,18 @@ def add_default_lead_statuses():
 		if frappe.db.exists("CRM Lead Status", status):
 			continue
 
-		doc = frappe.new_doc("CRM Lead Status")
-		doc.lead_status = status
-		doc.color = statuses[status]["color"]
-		doc.position = statuses[status]["position"]
-		doc.insert()
+		try:
+			doc = frappe.new_doc("CRM Lead Status")
+			doc.lead_status = status
+			doc.color = statuses[status]["color"]
+			doc.position = statuses[status]["position"]
+			doc.insert()
+		except Exception as e:
+			# Log error but don't fail
+			frappe.log_error(
+				title="Error creating CRM Lead Status",
+				message=f"Failed to create lead status '{status}': {str(e)}"
+			)
 
 
 def add_default_deal_statuses():
