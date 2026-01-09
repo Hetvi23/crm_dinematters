@@ -318,13 +318,8 @@ def get_data(
 			if json_end > 0:
 				kanban_fields = kanban_fields[:json_end]
 			else:
-				# If we can't find the end, try to parse what we have
-				# and if it fails, default to empty array
-				try:
-					import json
-					json.loads(kanban_fields)
-				except:
-					kanban_fields = "[]"
+				# If we can't find the end, default to empty array
+				kanban_fields = "[]"
 		else:
 			# Not JSON format, try to parse as comma-separated or default to empty
 			try:
