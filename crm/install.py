@@ -73,38 +73,59 @@ def add_default_lead_statuses():
 		return
 
 	for status, config in statuses.items():
-		if frappe.db.exists("CRM Lead Status", status):
-			continue
-
+		exists = frappe.db.exists("CRM Lead Status", status)
+		
 		try:
-			# Try using DocType first (works after installation)
-			doc = frappe.new_doc("CRM Lead Status")
-			doc.lead_status = status
-			doc.color = config["color"]
-			doc.position = config["position"]
-			doc.insert()
+			if exists:
+				# Update existing status to ensure correct color and position
+				doc = frappe.get_doc("CRM Lead Status", status)
+				doc.color = config["color"]
+				doc.position = config["position"]
+				doc.save(ignore_permissions=True)
+			else:
+				# Create new status
+				# Try using DocType first (works after installation)
+				doc = frappe.new_doc("CRM Lead Status")
+				doc.lead_status = status
+				doc.color = config["color"]
+				doc.position = config["position"]
+				doc.insert(ignore_permissions=True)
 		except Exception:
-			# If DocType controller not available, use direct SQL insert
+			# If DocType controller not available, use direct SQL insert/update
 			# This can happen during migration when controller isn't loaded yet
 			try:
-				frappe.db.sql("""
-					INSERT INTO `tabCRM Lead Status` 
-					(name, lead_status, color, position, creation, modified, owner, modified_by)
-					VALUES (%s, %s, %s, %s, NOW(), NOW(), %s, %s)
-				""", (
-					status,
-					status,
-					config["color"],
-					config["position"],
-					frappe.session.user,
-					frappe.session.user
-				))
+				if exists:
+					# Update existing
+					frappe.db.sql("""
+						UPDATE `tabCRM Lead Status`
+						SET color = %s, position = %s, modified = NOW(), modified_by = %s
+						WHERE name = %s
+					""", (
+						config["color"],
+						config["position"],
+						frappe.session.user,
+						status
+					))
+				else:
+					# Insert new
+					frappe.db.sql("""
+						INSERT INTO `tabCRM Lead Status` 
+						(name, lead_status, color, position, creation, modified, owner, modified_by)
+						VALUES (%s, %s, %s, %s, NOW(), NOW(), %s, %s)
+					""", (
+						status,
+						status,
+						config["color"],
+						config["position"],
+						frappe.session.user,
+						frappe.session.user
+					))
 				frappe.db.commit()
 			except Exception as e:
 				# Log error but continue
 				frappe.log_error(
-					title="Error creating CRM Lead Status",
-					message=f"Failed to create lead status '{status}': {str(e)}"
+					title="Error creating/updating CRM Lead Status",
+					message=f"Failed to create/update lead status '{status}': {str(e)}"
 				)
 				frappe.db.rollback()
 
