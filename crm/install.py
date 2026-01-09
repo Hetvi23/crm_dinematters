@@ -72,6 +72,36 @@ def add_default_lead_statuses():
 	if not frappe.db.exists("DocType", "CRM Lead Status"):
 		return
 
+	# Get list of required status names
+	required_status_names = list(statuses.keys())
+	
+	# Remove old default statuses that are not in the required list
+	old_default_statuses = ["New", "Nurture", "Unqualified", "Junk", "Contacted", "Qualified"]
+	# Note: "Contacted" and "Qualified" are in both lists, so we only remove if they're not in required
+	statuses_to_remove = [s for s in old_default_statuses if s not in required_status_names]
+	
+	# Get all existing statuses
+	all_existing_statuses = frappe.get_all("CRM Lead Status", fields=["name", "lead_status"])
+	
+	for status_doc in all_existing_statuses:
+		status_name = status_doc["lead_status"]
+		if status_name not in required_status_names:
+			# Update all leads with this status to "Intake" (default)
+			try:
+				frappe.db.sql("""
+					UPDATE `tabCRM Lead`
+					SET status = 'Intake'
+					WHERE status = %s
+				""", (status_name,))
+				# Delete the status
+				frappe.delete_doc("CRM Lead Status", status_name, force=1, ignore_permissions=True)
+				frappe.logger().info(f"Removed old CRM Lead Status: {status_name} (updated leads to 'Intake')")
+			except Exception as e:
+				frappe.log_error(
+					title="Error removing old CRM Lead Status",
+					message=f"Failed to remove lead status '{status_name}': {str(e)}"
+				)
+
 	for status, config in statuses.items():
 		exists = frappe.db.exists("CRM Lead Status", status)
 		

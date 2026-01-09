@@ -27,7 +27,7 @@
     <div class="flex items-center gap-2">
       <TextInput
         v-model="searchQuery"
-        :placeholder="__('Search leads by name, email, phone, or company...')"
+        :placeholder="__('Search leads by name, email, mobile number, or company...')"
         class="flex-1 max-w-md"
         @input="handleSearch"
       >
@@ -695,11 +695,23 @@ function handleSearch() {
         }
       }
       
-      // Add txt parameter to list params for backend search
+      // Use filters with OR condition to search across multiple fields including mobile_no
+      // This ensures mobile number is included in the search
+      viewControls.value.list.params.filters = {
+        converted: 0,
+        or: [
+          ['lead_name', 'like', `%${searchTerm}%`],
+          ['email', 'like', `%${searchTerm}%`],
+          ['mobile_no', 'like', `%${searchTerm}%`],
+          ['organization', 'like', `%${searchTerm}%`],
+        ]
+      }
+      
+      // Also add txt parameter as fallback for general search
       viewControls.value.list.params.txt = searchTerm
       
       // Reload the list directly without using the reload() method
-      console.log('Reloading with txt parameter:', searchTerm)
+      console.log('Reloading with search filters:', searchTerm)
       viewControls.value.list.reload()
     } else {
       console.error('ViewControls or list not available')
@@ -715,8 +727,9 @@ function clearSearch() {
   if (viewControls.value && viewControls.value.list) {
     console.log('Clearing search')
     
-    // Remove txt parameter from list params
+    // Restore default filters and remove search parameters
     if (viewControls.value.list.params) {
+      viewControls.value.list.params.filters = { converted: 0 }
       delete viewControls.value.list.params.txt
     }
     
